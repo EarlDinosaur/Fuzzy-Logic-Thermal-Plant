@@ -3,30 +3,27 @@ import random
 import math
 from collections import deque
 
-# --- Main Application Class ---
+
 class FuzzyThermalControl:
-    """
-    A Pygame application that simulates a fuzzy logic-based thermal control system.
-    This class handles the simulation logic, fuzzy controller, and graphical user interface.
-    """
+   
     def __init__(self):
-        # 1. Pygame Initialization
+       
         pygame.init()
         pygame.display.set_caption("Fuzzy Logic Thermal Control System")
 
-        # Screen and Layout Dimensions
+       
         self.WIDTH, self.HEIGHT = 1280, 720
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         self.clock = pygame.time.Clock()
         
-        # Load fonts for rendering text
+       
         self.font_big = pygame.font.Font(None, 48)
         self.font_medium = pygame.font.Font(None, 32)
         self.font_small = pygame.font.Font(None, 24)
         self.font_mono = pygame.font.SysFont('consolas', 22)
         self.font_tiny = pygame.font.SysFont('consolas', 16)
 
-        # Color palette for the UI
+        
         self.COLOR = {
             'bg': (240, 245, 255),
             'panel': (255, 255, 255),
@@ -47,11 +44,11 @@ class FuzzyThermalControl:
             'btn_reset_hover': (55, 65, 81),
         }
 
-        # 2. State Variables
-        self.current_temp = random.uniform(10.0, 40.0)
+     
+        self.current_temp = random.uniform(10.0, 40.0) #initial temp
         self.target_temp = 25.0
         self.is_running = False
-        self.temp_history = deque(maxlen=120)  # Max 120 points (60s of data)
+        self.temp_history = deque(maxlen=120)  
         self.error = 0.0
         self.error_dot = 0.0
         self.control_action = 'NEUTRAL'
@@ -62,16 +59,13 @@ class FuzzyThermalControl:
         self.ambient_temp = 30.0
         self.ambient_mode = 'Summer'
         
-        # Counter for consecutive neutral actions
-        self.neutral_action_count = 0
-        # Flag to track ambient drift application
-        self.is_applying_ambient_drift = False
 
-        # UI Element Rectangles for layout and interaction
+        self.neutral_action_count = 0
+        self.is_applying_ambient_drift = False
         self._initialize_layout()
 
     def _initialize_layout(self):
-        """Define the Rect objects for all UI panels to structure the layout."""
+
         self.graph_panel_rect = pygame.Rect(30, 80, 820, 360)
         self.thermo_panel_rect = pygame.Rect(30, 460, 820, 230)
         self.control_panel_rect = pygame.Rect(870, 80, 380, 200)
@@ -79,14 +73,14 @@ class FuzzyThermalControl:
         self.metrics_panel_rect = pygame.Rect(870, 370, 380, 230)
         self.rules_panel_rect = pygame.Rect(870, 610, 380, 140)
         
-        # Define Rects for interactive buttons
+
         self.btn_start_pause_rect = pygame.Rect(self.control_panel_rect.x + 30, self.control_panel_rect.y + 130, 150, 45)
         self.btn_reset_rect = pygame.Rect(self.control_panel_rect.x + 200, self.control_panel_rect.y + 130, 150, 45)
         self.btn_plus_rect = pygame.Rect(self.control_panel_rect.x + 290, self.control_panel_rect.y + 75, 40, 40)
         self.btn_minus_rect = pygame.Rect(self.control_panel_rect.x + 240, self.control_panel_rect.y + 75, 40, 40)
         self.btn_ambient_toggle_rect = pygame.Rect(self.ambient_panel_rect.x + 30, self.ambient_panel_rect.y + 20, self.ambient_panel_rect.width - 60, 35)
 
-    # 3. Fuzzy Logic Engine
+
     def triangular_mf(self, x, a, b, c):
         """Triangular membership function."""
         if x <= a or x >= c: return 0.0
@@ -95,17 +89,15 @@ class FuzzyThermalControl:
         return (c - x) / (c - b)
 
     def trapezoidal_mf(self, x, a, b, c, d):
-        """Trapezoidal membership function."""
+
         if x <= a or x >= d: return 0.0
         if b <= x <= c: return 1.0
         if x < b: return (x - a) / (b - a)
         return (d - x) / (d - c)
 
     def fuzzy_controller(self, err, err_dot):
-        """
-        Core fuzzy logic controller.
-        Takes error and error rate as input and returns a control action.
-        """
+
+
         # Fuzzification for error (-20 to 20)
         err_neg = self.trapezoidal_mf(err, -20, -20, -2, 0)
         err_zer = self.triangular_mf(err, -2, 0, 2)
@@ -144,16 +136,12 @@ class FuzzyThermalControl:
         output_strength = numerator / denominator if denominator > 0 else 0.0
         return {'action': dominant_action, 'strength': output_strength}
 
-    # 4. Simulation Logic
+  
     def update_simulation(self):
-        """
-        Updates the state of the simulation for one time step (0.5s).
-        The ambient temperature drift is only applied when the system is stable
-        near the target to simulate a realistic passive temperature change.
-        """
+       
         # 1. Calculate error and its rate of change
         new_error = self.target_temp - self.current_temp
-        self.error_dot = (new_error - self.prev_error) / 0.5  # dt = 0.5s
+        self.error_dot = (new_error - self.prev_error) / 0.5  # skew rate
         self.error = new_error
         self.prev_error = new_error
 
@@ -164,7 +152,7 @@ class FuzzyThermalControl:
 
         # 3. Initialize temperature change for this step
         temp_change = 0.0
-        self.is_applying_ambient_drift = False  # Reset flag
+        self.is_applying_ambient_drift = False  
 
         # 4. Apply fuzzy control action (active heating/cooling)
         if self.control_action != 'NEUTRAL' and abs(self.action_strength) > 0.01:
@@ -184,14 +172,14 @@ class FuzzyThermalControl:
             self.neutral_action_count += 1
 
         # 5. Conditionally apply ambient temperature drift (passive change)
-        is_in_target_range = abs(self.error) < 1.5  # Stable within 1.5°C
-        has_been_neutral = self.neutral_action_count > 6  # After 3s of no action
+        is_in_target_range = abs(self.error) < 1.5
+        has_been_neutral = self.neutral_action_count > 6  
 
-        if is_in_target_range and has_been_neutral:
-            drift_rate = 0.02  # Natural rate of change
-            ambient_effect = drift_rate * (self.ambient_temp - self.current_temp)
-            temp_change += ambient_effect
-            self.is_applying_ambient_drift = True  # Set flag
+        # if is_in_target_range and has_been_neutral:
+        #     drift_rate = 0.02  
+        #     ambient_effect = drift_rate * (self.ambient_temp - self.current_temp)
+        #     temp_change += ambient_effect
+        #     self.is_applying_ambient_drift = False
 
         # 6. Update the current temperature
         new_temp = max(0, min(100, self.current_temp + temp_change))
@@ -206,7 +194,6 @@ class FuzzyThermalControl:
         self.time_step += 1
 
     def reset_simulation(self):
-        """Resets the simulation to its initial state."""
         self.is_running = False
         self.current_temp = random.uniform(10.0, 40.0)
         self.temp_history.clear()
@@ -219,9 +206,9 @@ class FuzzyThermalControl:
         self.neutral_action_count = 0
         self.is_applying_ambient_drift = False
         
-    # 5. GUI Drawing Methods
+
     def _draw_panel(self, rect, title):
-        """Helper function to draw a bordered panel with a title."""
+        
         pygame.draw.rect(self.screen, self.COLOR['shadow'], (rect.x, rect.y + 4, rect.width, rect.height), border_radius=12)
         pygame.draw.rect(self.screen, self.COLOR['panel'], rect, border_radius=12)
         
@@ -229,13 +216,13 @@ class FuzzyThermalControl:
         self.screen.blit(title_surf, (rect.x + 20, rect.y + 15))
 
     def _render_and_blit_text(self, text, font, color, position, anchor="topleft"):
-        """Renders text and blits it to the screen with a specific anchor."""
+        
         surf = font.render(text, True, color)
         rect = surf.get_rect(**{anchor: position})
         self.screen.blit(surf, rect)
 
     def draw_graph(self):
-        """Draws the real-time temperature graph."""
+        
         panel_rect = self.graph_panel_rect
         self._draw_panel(panel_rect, "Temperature History (60s)")
         
@@ -275,7 +262,7 @@ class FuzzyThermalControl:
                 pygame.draw.lines(self.screen, self.COLOR['accent_red'], False, points_target, 2)
 
     def draw_thermometer_display(self):
-        """Draws the thermometer visualization and status indicators."""
+        
         panel_rect = self.thermo_panel_rect
         self._draw_panel(panel_rect, "Live Display")
         
@@ -284,7 +271,7 @@ class FuzzyThermalControl:
         current_center_x = panel_rect.left + section_width * 1.3
         status_center_x = panel_rect.left + section_width * 2.2
 
-        # --- Thermometer Drawing ---
+        
         thermo_y, bulb_radius, stem_width, stem_height = panel_rect.centery, 25, 30, 75
         
         pygame.draw.rect(self.screen, self.COLOR['grid'], (thermo_center_x - stem_width/2, thermo_y - stem_height, stem_width, stem_height), border_radius=15)
@@ -302,13 +289,13 @@ class FuzzyThermalControl:
         if fill_height > 0:
             pygame.draw.rect(self.screen, fill_color, (thermo_center_x - stem_width/2 + 5, thermo_y - (fill_height - bulb_radius/2), stem_width - 10, fill_height-bulb_radius/2), border_top_left_radius=10, border_top_right_radius=10)
 
-        # --- Text Display ---
+        
         self._render_and_blit_text(f"{self.current_temp:.1f}°C", self.font_big, self.COLOR['text'], (current_center_x, panel_rect.centery - 10), anchor="center")
         self._render_and_blit_text("Current", self.font_small, self.COLOR['text_light'], (current_center_x, panel_rect.centery + 25), anchor="center")
         
         self._render_and_blit_text(f"Target: {self.target_temp:.1f}°C", self.font_medium, self.COLOR['accent_red'], (status_center_x, panel_rect.centery - 60), anchor="center")
 
-        # Only show fuzzy control action, not ambient drift
+        
         action_text = self.control_action
         if action_text == 'COOL': bg_color, text_color = (229, 242, 255), (37, 99, 235)
         elif action_text == 'HEAT': bg_color, text_color = (254, 226, 226), (220, 38, 38)
@@ -319,7 +306,7 @@ class FuzzyThermalControl:
         pygame.draw.rect(self.screen, bg_color, action_rect, border_radius=15)
         self._render_and_blit_text(action_text, self.font_small, text_color, action_rect.center, anchor="center")
 
-        # Update status text to show ambient drift if applicable
+        
         if self.is_applying_ambient_drift:
             status, status_color = "Passive Drift", self.COLOR['accent_purple']
         else:
@@ -329,7 +316,7 @@ class FuzzyThermalControl:
         self._render_and_blit_text(status, self.font_medium, status_color, (status_center_x, panel_rect.centery + 60), anchor="center")
     
     def draw_control_panel(self):
-        """Draws the control panel with buttons and target temp display."""
+        
         panel_rect = self.control_panel_rect
         self._draw_panel(panel_rect, "Control Panel")
 
@@ -352,18 +339,18 @@ class FuzzyThermalControl:
         self._render_and_blit_text("Reset", self.font_medium, (255,255,255), self.btn_reset_rect.center, anchor="center")
 
     def draw_ambient_panel(self):
-        """Draws the ambient mode selection panel with toggle button."""
+        
         panel_rect = self.ambient_panel_rect
         self._draw_panel(panel_rect, "")
         pygame.draw.rect(self.screen, self.COLOR['grid'], self.btn_ambient_toggle_rect, border_radius=8)
         self._render_and_blit_text(f"Mode: {self.ambient_mode}", self.font_small, self.COLOR['text'], self.btn_ambient_toggle_rect.center, anchor="center")
 
     def draw_metrics_panel(self):
-        """Draws the panel displaying system metrics."""
+        
         panel_rect = self.metrics_panel_rect
         self._draw_panel(panel_rect, "System Metrics")
         
-        # Add ambient drift indicator to metrics
+        
         drift_status = "Yes" if self.is_applying_ambient_drift else "No"
         drift_color = self.COLOR['accent_purple'] if self.is_applying_ambient_drift else self.COLOR['text_light']
         
@@ -381,7 +368,7 @@ class FuzzyThermalControl:
             self._render_and_blit_text(value, self.font_mono, color, (item_rect.right - 15, item_rect.centery), anchor="midright")
 
     def process_events(self):
-        """Handles all user input events."""
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False 
@@ -397,15 +384,15 @@ class FuzzyThermalControl:
                     self.target_temp = min(100.0, round(self.target_temp + 0.5, 1))
                 elif self.btn_minus_rect.collidepoint(event.pos):
                     self.target_temp = max(0.0, round(self.target_temp - 0.5, 1))
-                elif self.btn_ambient_toggle_rect.collidepoint(event.pos):
-                    if self.ambient_mode == 'Summer':
-                        self.ambient_mode, self.ambient_temp = 'Winter', 10.0
-                    else:
-                        self.ambient_mode, self.ambient_temp = 'Summer', 30.0
+                # elif self.btn_ambient_toggle_rect.collidepoint(event.pos):
+                #     if self.ambient_mode == 'Summer':
+                #         self.ambient_mode, self.ambient_temp = 'Winter', 10.0
+                #     else:
+                #         self.ambient_mode, self.ambient_temp = 'Summer', 40.0
         return True
 
     def run(self):
-        """Main application loop."""
+        
         running = True
         while running:
             running = self.process_events()
@@ -430,7 +417,7 @@ class FuzzyThermalControl:
 
         pygame.quit()
 
-# --- Run the application ---
+
 if __name__ == '__main__':
     app = FuzzyThermalControl()
     app.run()
